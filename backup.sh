@@ -36,7 +36,7 @@ OPTIONS:\n
   exit
 }
 
-while getopts “d:ghzs:” OPTION ; do
+while getopts “d:ghs:z” OPTION ; do
 case $OPTION in
   d)
     BAK_DIR=`dirname $OPTARG/coincoin`
@@ -47,11 +47,11 @@ case $OPTION in
   h)
     usage
     ;;
-  z)
-    USE_ZENITY=1
-    ;;
   s)
     LIMIT_SIZE=$OPTARG
+    ;;
+  z)
+    USE_ZENITY=1
     ;;
   ?)
     usage
@@ -105,7 +105,7 @@ fi
 say $MSG
 
 
-exit # comment if .gnupg, .mozilla and .icedove aren't symlinked in your .config/
+exit # comment if .gnupg, .mozilla and .icedove are not in your .config/
 
 rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --del --stats --ignore-errors \
   /home/$USER/.gnupg/ \
