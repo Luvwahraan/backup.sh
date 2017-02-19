@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-BAK_DIR=$1
+BAK_DIR="$1"
 USE_ZENITY=0
 LIMIT_SIZE=768
-RSYNC_CMD='rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --del \
-  --stats --ignore-errors'
-
 BAK_GPG=0
 BAK_GK=0
 DO_NOTHING=0
+RSYNC_CMD='rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --del \
+  --stats --ignore-errors'
+
 
 
 function say
@@ -55,8 +55,7 @@ function bak_gpg
 
 function bak_gk
 {
-  #mkdir --parents "$BAK_DIR/GPG.key/"
-
+  $RSYNC_CMD "/home/$USER/.local/share/keyrings/" "$BAK_DIR"
 }
 
 while getopts “d:ghkns:z” OPTION ; do
