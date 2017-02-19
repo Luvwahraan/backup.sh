@@ -80,7 +80,7 @@ if [ "$BAK_KEYS" == 1 ] ; then
   mkdir --parents "$BAK_DIR/GPG.key/"
   gpg2 --export-ownertrust > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.trust"
   gpg2 --export --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.pub"
-  gpg2 --export-secret-keys --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.pub"
+  gpg2 --export-secret-keys --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.priv"
 fi
 
 
