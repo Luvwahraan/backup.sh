@@ -3,9 +3,12 @@
 BAK_DIR="$1"
 USE_ZENITY=0
 LIMIT_SIZE=768
+
 BAK_GPG=0
 BAK_GK=0
+BAK_CFG=0
 DO_NOTHING=0
+
 RSYNC_CMD='rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --del \
   --stats --ignore-errors'
 
@@ -27,6 +30,7 @@ function usage
   MSG="usage: $0 options\n
 \n
 This script make backup of .config and all exported GPG keys.\n
+GPG export for private keys and trusts asks your passphrase.\n
 \n
 /!\ \tWarning\t /!\ \n
 Backups have no permissions in order to use FAT32 filesystem.\n
@@ -58,10 +62,34 @@ function bak_gk
   $RSYNC_CMD "/home/$USER/.local/share/keyrings/" "$BAK_DIR"
 }
 
-while getopts “d:ghkns:z” OPTION ; do
+function bak_cfg
+{
+  # Get file too big
+  EXCLUDES=''
+  PRINTABLE_EXCLUDES=''
+  for f in `du --threshold $LIMIT_SIZE * | cut -f2` ; do
+    EXCLUDES="$EXCLUDES--exclude=$f "
+    PRINTABLE_EXCLUDES="$PRINTABLE_EXCLUDES$f "
+  done
+
+  $RSYNC_CMD $EXCLUDES "$DIR"  "$BAK_DIR"
+
+  MSG="Backups finished to\n$BAK_DIR."
+  if [ ! "$PRINTABLE_EXCLUDES" == '' ] ; then
+    LIMIT_SIZE=$(($LIMIT_SIZE / 1024 / 1024))
+    MSG="$MSG\n\nDirectories excluded (over $LIMIT_SIZE Mio) :\n$PRINTABLE_EXCLUDES"
+  fi
+  say $MSG
+}
+
+
+while getopts “cd:ghkns:z” OPTION ; do
 case $OPTION in
   z)
     USE_ZENITY=1
+    ;;
+  c)
+    BAK_CFG=1
     ;;
   d)
     BAK_DIR=`dirname $OPTARG/coincoin`
@@ -116,24 +144,10 @@ if [ "$BAK_GK" == 1 ] ; then
   bak_gk
 fi
 
-
-# Get file too big
-EXCLUDES=''
-PRINTABLE_EXCLUDES=''
-for f in `du --threshold $LIMIT_SIZE -hs * | cut -f2` ; do
-  EXCLUDES="$EXCLUDES--exclude=$f "
-  PRINTABLE_EXCLUDES="$PRINTABLE_EXCLUDES$f "
-done
-
-
-$RSYNC_CMD $EXCLUDES "$DIR"  "$BAK_DIR"
-
-MSG="Backups finished to\n$BAK_DIR."
-if [ ! "$PRINTABLE_EXCLUDES" == '' ] ; then
-  LIMIT_SIZE=$(($LIMIT_SIZE / 1024 / 1024))
-  MSG="$MSG\n\nDirectories excluded (over $LIMIT_SIZE Mio) :\n$PRINTABLE_EXCLUDES"
+# Backup gnome-keyring
+if [ "$BAK_CFG" == 1 ] ; then
+  bak_cfg
 fi
-say $MSG
 
 
 exit # comment if .gnupg, .mozilla and .icedove are not in your .config/
