@@ -3,7 +3,12 @@
 BAK_DIR=$1
 USE_ZENITY=0
 LIMIT_SIZE=768
-BAK_KEYS=0
+RSYNC_CMD='rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --del \
+  --stats --ignore-errors'
+
+BAK_GPG=0
+BAK_GK=0
+DO_NOTHING=0
 
 
 function say
@@ -13,7 +18,6 @@ function say
   else
    #MSG = "`echo $@ | sed 's/^\n//'`"
     echo -e $@  | fold -s
-    echo
   fi
 }
 
@@ -24,34 +28,59 @@ function usage
 \n
 This script make backup of .config and all exported GPG keys.\n
 \n
+/!\ \tWarning\t /!\ \n
+Backups have no permissions in order to use FAT32 filesystem.\n
+Everyone can reads thems, including _private keys_!\n
+Use external data storage like USB flash drive, and remove it after backup.\n
+\n
 OPTIONS:\n
    -h      Show this message\n
-   -z      Use zenity instead echo on terminal.\n
-   -g      Backup all GPG keys.\n
+   -z      Use zenity instead echo on terminal\n
+   -g      Backup all GPG keys\n
+   -k      Backup gnome keyring\n
    -s      Ignore directories greater, in Mio ; default 768 (0,75 Gio)\n
-   -d      Choose directory where write backup ; required.\n
-\n"
+   -d      Choose directory where write backup ; required\n"
 
   say $MSG
   exit
 }
 
-while getopts “d:ghs:z” OPTION ; do
+function bak_gpg
+{
+  mkdir --parents "$BAK_DIR/GPG.key/"
+  gpg2 --export-ownertrust > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.trust"
+  gpg2 --export --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.pub"
+  gpg2 --export-secret-keys --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.priv"
+}
+
+function bak_gk
+{
+  #mkdir --parents "$BAK_DIR/GPG.key/"
+
+}
+
+while getopts “d:ghkns:z” OPTION ; do
 case $OPTION in
+  z)
+    USE_ZENITY=1
+    ;;
   d)
     BAK_DIR=`dirname $OPTARG/coincoin`
     ;;
   g)
-    BAK_KEYS=1
+    BAK_GPG=1
     ;;
   h)
     usage
     ;;
+  k)
+    BAK_GK=1
+    ;;
+  n)
+    DO_NOTHING=1
+    ;;
   s)
     LIMIT_SIZE=$OPTARG
-    ;;
-  z)
-    USE_ZENITY=1
     ;;
   ?)
     usage
@@ -74,13 +103,18 @@ BAK_DIR="$BAK_DIR/backup"
 DIR="/home/$USER/.config"
 LIMIT_SIZE=$((1024*1024*$LIMIT_SIZE)) # 1Gio
 
+say "Dont't forget: use external data storage like USB flash drive, and remove it after backup.\n"
+if [ "$DO_NOTHING" == 1 ] ; then exit ; fi
 
-if [ "$BAK_KEYS" == 1 ] ; then
-  # Backup gpg
-  mkdir --parents "$BAK_DIR/GPG.key/"
-  gpg2 --export-ownertrust > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.trust"
-  gpg2 --export --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.pub"
-  gpg2 --export-secret-keys --armor > "$BAK_DIR/GPG.key/$USER@$HOSTNAME_$NOW.priv"
+
+# Backup gpg
+if [ "$BAK_GPG" == 1 ] ; then
+  bak_gpg
+fi
+
+# Backup gnome-keyring
+if [ "$BAK_GK" == 1 ] ; then
+  bak_gk
 fi
 
 
@@ -93,9 +127,7 @@ for f in `du --threshold $LIMIT_SIZE -hs * | cut -f2` ; do
 done
 
 
-rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --del \
-  --stats --ignore-errors \
-  $EXCLUDES "$DIR"  "$BAK_DIR"
+$RSYNC_CMD $EXCLUDES "$DIR"  "$BAK_DIR"
 
 MSG="Backups finished to\n$BAK_DIR."
 if [ ! "$PRINTABLE_EXCLUDES" == '' ] ; then
